@@ -2,47 +2,57 @@
 #include <stdlib.h>
 #include <math.h>
 #include "u1.hpp"
+#include<vector>
 
+int size = 48;
+const double pi = 3.14159265358979323846;
+// return type vector
 
 void U1GaugeLattice::MoveUp(int x[], int d)
 {
     x[d]+=1;
-    if (x[d]>=mSize) x[d]-=SIZE; 
+    if (x[d]>=size) x[d]-=size; 
     return;
 }
 
 void U1GaugeLattice::MoveDown(int x[], int d)
 {
     x[d]-=1;
-    if (x[d]<0) x[d]+=mSize;
+    if (x[d]<0) x[d]+=size;
     return;
 }
 void U1GaugeLattice::ColdStart()
 {
-    int x[4],d;
-    for (x[0]=0;x[0]<mSize;x[0]++)
-        for (x[1]=0;x[1]<mSize;x[1]++)
-                    for (d=0;d<4;d++)
+    int x[2],d;
+    for (x[0]=0;x[0]<size;x[0]++)
+        for (x[1]=0;x[1]<size;x[1]++)
+          //  for (x[2]=0;x[2]<mSize;x[2]++)
+	  //     for (x[3]=0;x[3]<mSize;x[3]++)
+                    for (d=0;d<2;d++)
 	                    link[x[0]][x[1]][d]=1;
     return;    
 }
 
 
-double U1GaugeLattice::Update(double beta, int confignum)
+
+std::vector<double> U1GaugeLattice::Update(double beta)
 {
 /* do a Monte Carlo sweep; return energy */
-int x[4],d,dperp,staple,staplesum;
- int ensem[SIZE][SIZE][4][confignum];
-
- double bplus,bminus,action,plaquette=0.0;
-   int count = 0;
-   for(int i =0; i<confignum; i++){
-  for (x[0]=0; x[0]<mSize; x[0]++)
-    for (x[1]=0; x[1]<mSize; x[1]++)
-          for (d=0; d<4; d++) {
+  // std::cout<<"starting..."<<std::endl;
+  int x[2],d,dperp;
+  std::vector<double> output;
+  double staple,staplesum;    
+  double bplus,bminus,action=0.0;
+  int count,accept=0;
+  bool dbg =false;
+  for (x[0]=0; x[0]<size; x[0]++)
+    for (x[1]=0; x[1]<size; x[1]++)
+          for (d=0; d<2; d++) {
             staplesum=0;
-            for (dperp=0;dperp<4;dperp++){
+            for (dperp=0;dperp<2;dperp++){
               if (dperp!=d){
+
+		if(dbg){std::cout<<"x0= "<<x[0]<<" x1= "<<x[1]<<" d= "<<d<<" dperp= "<<dperp<<std::endl;}
                 /*  move around thusly:
                     dperp        6--5
                     ^            |  |
@@ -51,73 +61,66 @@ int x[4],d,dperp,staple,staplesum;
                     -----> d     2--3  */
                 /* plaquette 1234 */
                 MoveDown(x,dperp);
-		//saving links
-		       	ensem[x[0]][x[1]][dperp][i] = link[x[0]][x[1]][dperp];
-			ensem[x[0]][x[1]][d][i] = link[x[0]][x[1]][d];
                 staple=link[x[0]][x[1]][dperp]
                   *link[x[0]][x[1]][d];
                 MoveUp(x,d);
-			ensem[x[0]][x[1]][dperp][i] = link[x[0]][x[1]][dperp];
                 staple*=link[x[0]][x[1]][dperp];  
                 MoveUp(x,dperp);
                 staplesum+=staple;
                 /* plaquette 1456 */
-			ensem[x[0]][x[1]][dperp][i] = link[x[0]][x[1]][dperp];
                 staple=link[x[0]][x[1]][dperp];
                 MoveUp(x,dperp);
                 MoveDown(x,d);
-				ensem[x[0]][x[1]][d][i]=link[x[0]][x[1]][d];
                 staple*=link[x[0]][x[1]][d];
                 MoveDown(x,dperp);
-				ensem[x[0]][x[1]][dperp][i] = link[x[0]][x[1]][dperp];
                 staple*=link[x[0]][x[1]][dperp];
                 staplesum+=staple;
+		if(dbg){std::cout<<"staplesum "<<staplesum<<std::endl;}
               }
 	        }
             /* calculate the Boltzmann weight */
-	    // std::cout<<"stapelsum " << staplesum << std::endl;
-            bplus=exp(beta*staplesum);
-            bminus=1/bplus;
-            bplus=bplus/(bplus+bminus);
-            /* the heatbath algorithm */
-	    bool bath = true;
-	    if(bath == false){
-            if ( drand48() < bplus ){
+	    //        bplus=exp(beta*staplesum);
+		//     bminus=1/bplus;
+	    //     bplus=bplus/(bplus+bminus);
+	    // if(dbg){std::cout<<"bplus " << bplus << std::endl;}
+	    //std::cout<<"Betaboltz "<<bplus<<std::endl;
+	     // the heatbath algorithm 
+	    /*      if ( drand48() < bplus ){
               link[x[0]][x[1]][d]=1;
               action+=staplesum;
             }
             else{ 
               link[x[0]][x[1]][d]=-1;
               action-=staplesum;
-            }
-	    }
-	    // Metropolis step
+	      } */
+
+	     // Metropolis step
 	    if(true){
-	    double rando = drand48()*2.0 -1.0;
-	    int link_new= 0;
-	    if(rando>0){link_new+=1;}
-	    else{link_new-=1;}
+	      double rando = drand48()*2.0*pi;
+	      double theta = acos(link[x[0]][x[1]][d]);
+	      double weight = 0.3;
+	    double link_new = cos(weight*rando+theta);
             double delta_s = beta*staplesum*(link_new - link[x[0]][x[1]][d]);
-
-
+	    if(dbg){std::cout<<"prob "<<exp(-delta_s)<<std::endl;}
+	    
 	      double p_accept = fmin(1.0, exp(-delta_s));
 	      double draw = drand48(); 
-	      if( draw < p_accept){
+	      if( draw < p_accept){accept++;
 	    // Accept: keep this sample
 		  link[x[0]][x[1]][d] = link_new;
-		  count++;}
+	      } count++;
 	      
 		  // Reject: overwrite proposed state with last samplepass
 
-		  plaquette += staplesum*link[x[0]][x[1]][d]; }//metropolis if
+		  action += staplesum*link[x[0]][x[1]][d]; }//metropolis if
+	    
+	    if(dbg){std::cout<<"action " << action<< std::endl;}
           } /* loop on d */
-  action /= (mSize*mSize*4.*6.);
-  action = 1. -action;
-  plaquette /= (mSize*mSize*4.*6.);
-   plaquette = 1. - plaquette;
-   
-   std::cout <<i<<" "<<plaquette<<"\n";
-  }
-  //std::cout << "number accepted "<< count << std::endl;
-  //return action;
+  action /= (size*size*4*6);
+  output.push_back(1.-action);
+  double ratio = (double)accept/count;
+  output.push_back(ratio);
+  if(dbg){std::cout<<"act "<<output[0]<<" ratio "<<output[1]<<std::endl;}
+  return output;
+ 
 }
