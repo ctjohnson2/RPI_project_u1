@@ -4,7 +4,7 @@
 #include "u1.hpp"
 #include<vector>
 
-int size = 48;
+int size = 6;
 const double pi = 3.14159265358979323846;
 // return type vector
 
@@ -33,7 +33,16 @@ void U1GaugeLattice::ColdStart()
     return;    
 }
 
-
+int U1GaugeLattice::CountPlaquettes(){
+  int x[2],d,dperp;
+  int count = 0;
+  for (x[0]=0; x[0]<size; x[0]++){
+    for (x[1]=0; x[1]<size; x[1]++){
+          for (d=0; d<2; d++) {
+            for (dperp=0;dperp<2;dperp++){std::cout<<count<<std::endl;
+	      count++;}}}}
+  return count;}
+  
 
 std::vector<double> U1GaugeLattice::Update(double beta)
 {
@@ -99,7 +108,7 @@ std::vector<double> U1GaugeLattice::Update(double beta)
 	      double rando = drand48()*2.0*pi;
 	      double theta = acos(link[x[0]][x[1]][d]);
 	      double weight = 0.3;
-	    double link_new = cos(weight*rando+theta);
+	      double link_new = cos((weight*rando+theta));
             double delta_s = beta*staplesum*(link_new - link[x[0]][x[1]][d]);
 	    if(dbg){std::cout<<"prob "<<exp(-delta_s)<<std::endl;}
 	    

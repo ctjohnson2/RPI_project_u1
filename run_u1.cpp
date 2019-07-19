@@ -12,13 +12,12 @@ int main(int argc, char* argvp[])
   
     /* do your experiment here; this example is a thermal cycle */
     U1GaugeLattice lat;
-    bool dbg = false;
+    bool dbg = true;
     dbeta=.01;
     lat.ColdStart();
-    if(dbg==true){  beta = 1.0;
-    std::cout<<"tryung update"<<beta<<std::endl;
-    
-    lat.Update(beta); }
+    if(dbg==true){  
+      lat.CountPlaquettes();
+    }
     
        // cool it down 
     /*  if(dbg==false){ for (beta=0; beta<20.0; beta+=dbeta){
