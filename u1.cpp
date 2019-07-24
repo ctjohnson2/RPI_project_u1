@@ -5,7 +5,7 @@
 #include "u1.hpp"
 #include<vector>
 
-int size = 16;
+int size = 192;
 const double pi = 3.14159265358979323846;
 // return type vector
 
@@ -22,6 +22,21 @@ void U1GaugeLattice::MoveDown(int x[], int d)
     if (x[d]<0) x[d]+=size;
     return;
 }
+void Z2GaugeLattice::MoveUp(int x[], int d)
+{
+    x[d]+=1;
+    if (x[d]>=size) x[d]-=size; 
+    return;
+}
+
+void Z2GaugeLattice::MoveDown(int x[], int d)
+{
+    x[d]-=1;
+    if (x[d]<0) x[d]+=size;
+    return;
+}
+
+
 void U1GaugeLattice::ColdStart()
 {
     int x[2],d;
@@ -29,7 +44,7 @@ void U1GaugeLattice::ColdStart()
         for (x[1]=0;x[1]<size;x[1]++)
   
 	  //     for (x[3]=0;x[3]<mSize;x[3]++)
-                    for (d=0;d<3;d++)
+                    for (d=0;d<2;d++)
 	                    link[x[0]][x[1]][d]=1;
     return;    
 }
@@ -66,7 +81,11 @@ std::complex<double> U1GaugeLattice::Plaquette(int x, int y)
   
   std::complex<double> plaq = exp(std::complex<double> (0.0,(link[x][y][0]+link[(x+1)%size][y][1]-(link[x][(y+1)%size][0])-(link[x][y][1]) ) ) );
   return plaq;}
-
+double Z2GaugeLattice::Plaquette(int x, int y)
+{
+  
+  double plaq = link[x][y][0]*link[(x+1)%size][y][1]*link[x][(y+1)%size][0]*link[x][y][1];
+  return plaq;}
 double U1GaugeLattice::Action(double beta){
   double action = 0.0;
   
@@ -85,6 +104,31 @@ double U1GaugeLattice::Action(double beta){
       
       
 }
+
+double Z2GaugeLattice::Action(double beta){
+  double action = 0.0;
+  
+  for(int i=0;i<size;i++){
+    for(int j =0;j<size;j++){
+     
+	action -= Plaquette(j,i);
+      action +=1.0;
+    }
+  }
+  
+
+ 
+  // action*=beta;
+  return action;
+      
+      
+}
+
+
+
+
+
+
 //330 340 351 451 440 430 3
 
 std::complex<double> U1GaugeLattice::WilsonLoop(int start_y, int start_t, int y, int t){
@@ -130,12 +174,13 @@ std::vector<int> U1GaugeLattice::Update(double beta)
   int count,accept=0;
   bool dbg =false;
   for (x[0]=0; x[0]<size; x[0]++)
-    for (x[1]=0; x[1]<size; x[1]++)
-          for (d=0; d<2; d++) {
+    for (x[1]=0; x[1]<size; x[1]++){
+      /*    for (d=0; d<2; d++) {
          
             for (dperp=0;dperp<2;dperp++){
-              if (dperp!=d){
-
+	    if (dperp!=d){ */
+      d=0;
+  dperp=1;
 		if(dbg){std::cout<<"x0= "<<x[0]<<" x1= "<<x[1]<<" d= "<<d<<" dperp= "<<dperp<<std::endl;}
                 /*  move around thusly:
                     dperp        6--5
@@ -162,8 +207,8 @@ std::vector<int> U1GaugeLattice::Update(double beta)
                 stapleangle-=link[x[0]][x[1]][dperp];
                 angle2sum=stapleangle;
 		//	if(dbg){std::cout<<"staplesum "<<staplesum<<std::endl;}
-              }
-	        }
+		//         }
+		//}
         
 
 	     // Metropolis step
@@ -204,6 +249,71 @@ std::vector<int> U1GaugeLattice::Update(double beta)
   if(dbg){std::cout<<"accepted "<<output[0]<<" count "<<output[1]<<std::endl;}
   return output;
  
+}
+double Z2GaugeLattice::Update(double beta)
+{
+/* do a Monte Carlo sweep; return energy */
+int x[4],d,dperp,staple,staplesum;    
+  double bplus,bminus,action=0.0; 
+  for (x[0]=0; x[0]<size; x[0]++)
+    for (x[1]=0; x[1]<size; x[1]++)
+          for (d=0; d<2; d++) {
+            staplesum=0;
+            for (dperp=0;dperp<2;dperp++){
+              if (dperp!=d){
+                /*  move around thusly:
+                    dperp        6--5
+                    ^            |  |
+                    |            1--4
+                    |            |  |
+                    -----> d     2--3  */
+                /* plaquette 1234 */
+		MoveDown(x,dperp);
+                staple=link[x[0]][x[1]][dperp]
+                  *link[x[0]][x[1]][d];
+                MoveUp(x,d);
+                staple*=link[x[0]][x[1]][dperp];  
+                MoveUp(x,dperp);
+                staplesum+=staple;
+                /* plaquette 1456 */
+                staple=link[x[0]][x[1]][dperp];
+                MoveUp(x,dperp);
+                MoveDown(x,d);
+                staple*=link[x[0]][x[1]][d];
+                MoveDown(x,dperp);
+                staple*=link[x[0]][x[1]][dperp];
+                staplesum+=staple;
+              }
+	        }
+            // calculate the Boltzmann weight 
+	           bplus=exp(beta*staplesum);
+            bminus=1/bplus;
+            bplus=bplus/(bplus+bminus);
+            // the heatbath algorithm 
+            if ( drand48() < bplus ){
+              link[x[0]][x[1]][d]=1;
+	      // action+=staplesum;
+            }
+            else{ 
+              link[x[0]][x[1]][d]=-1;
+	      //  action-=staplesum;
+	      } 
+	    //Metropolis
+	    int link_new=0;
+	    double rand = drand48()*2-1.0;
+	    if(rand > 0.0){link_new += 1;}
+	    else{link_new-=1;}
+	    double diff = (double)(link_new-link[x[0]][x[1]][d]);
+	    double tmp = (double)staplesum;
+	    double delta= beta*tmp*diff ;
+	    // std::cout<<"delta "<<delta<<std::endl;
+	    double f = fmin(1,exp(-delta));
+	    if(f<drand48()){
+	      link[x[0]][x[1]][d] = link_new;}
+	    action+=staplesum*link[x[0]][x[1]][d];
+          } /* loop on d */
+  action /= (size*size*2);
+  return 1.-action;
 }
 
       
